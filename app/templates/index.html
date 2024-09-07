@@ -3,86 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Code Audit</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <title>Code Audit Service</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='index_style.css') }}"
+    />
   </head>
   <body>
-    <h1>Code Audit Service</h1>
-    <p>
-      To use the code audit service, please transfer the required amount to the
-      developer's wallet address using MetaMask:
-    </p>
-    <p>
-      <strong>Developer's Wallet Address:</strong>
-      <span id="developer-wallet-address"></span>
-    </p>
-    <button id="connect-button">Connect MetaMask</button>
-    <button id="transfer-button" disabled>Transfer</button>
-    <form
-      id="upload-form"
-      action="{{ url_for('main.upload_file') }}"
-      method="post"
-      enctype="multipart/form-data"
-    >
-      <input type="file" name="file" required />
-      <input type="hidden" id="wallet-address" name="wallet_address" />
-      <button type="submit" disabled>Upload</button>
-    </form>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const developerWalletAddress = "{{ developer_wallet_address }}";
-        document.getElementById("developer-wallet-address").innerText =
-          developerWalletAddress;
-
-        let userWalletAddress;
-
-        if (typeof window.ethereum !== "undefined") {
-          const web3 = new Web3(window.ethereum);
-
-          document
-            .getElementById("connect-button")
-            .addEventListener("click", async () => {
-              try {
-                const accounts = await window.ethereum.request({
-                  method: "eth_requestAccounts",
-                });
-                userWalletAddress = accounts[0];
-                document.getElementById("wallet-address").value =
-                  userWalletAddress;
-                document.getElementById("transfer-button").disabled = false;
-              } catch (error) {
-                console.error("User denied account access");
-              }
-            });
-
-          document
-            .getElementById("transfer-button")
-            .addEventListener("click", async () => {
-              try {
-                const amount = web3.utils.toWei("0.01", "ether"); // 设置转账金额
-                const transactionParameters = {
-                  to: developerWalletAddress,
-                  from: userWalletAddress,
-                  value: amount,
-                };
-
-                await window.ethereum.request({
-                  method: "eth_sendTransaction",
-                  params: [transactionParameters],
-                });
-
-                document
-                  .getElementById("upload-form")
-                  .querySelector('button[type="submit"]').disabled = false;
-              } catch (error) {
-                console.error("Transaction failed", error);
-              }
-            });
-        } else {
-          console.error("MetaMask is not installed");
-        }
-      });
+    <div class="background"></div>
+    <div class="container">
+      <h1>Code Audit Service</h1>
+      <button id="connect-button">Connect Wallet</button>
+      <br /><br />
+      <input type="file" id="file-input" />
+      <br /><br />
+      <button id="upload-button">Upload and Audit</button>
+    </div>
+    <div class="boat-container hidden">
+      <div class="boat"></div>
+      <progress id="progress-bar" value="0" max="100"></progress>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.3.6/dist/web3.min.js"></script>
+    <script type="module">
+      window.contractAddress = "{{ contract_address }}";
     </script>
+    <script
+      type="module"
+      src="{{ url_for('static', filename='main.js') }}"
+    ></script>
+    <!-- <script src="{{ url_for('static', filename='index_script.js') }}"></script> -->
   </body>
 </html>
