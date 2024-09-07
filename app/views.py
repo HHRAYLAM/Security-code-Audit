@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_from_directory   
 import logging
 from app.audit_model import audit_code
 from app.upload_file import handle_file_upload, validate_file
@@ -14,6 +14,10 @@ main = Blueprint('main', __name__, static_folder='static', template_folder='temp
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+@main.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(main.root_path, 'static/images'), 'favicon.ico')
 
 @main.route('/')
 def index():
