@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 # 加载 .env 文件
 load_dotenv(override=True)
 
-main = Blueprint('main', __name__)
+main = Blueprint('main', __name__, static_folder='static', template_folder='templates')
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-import contractABI from "./contractABI.js";
+import contractABI from "../contractABI.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const initialize = async () => {
