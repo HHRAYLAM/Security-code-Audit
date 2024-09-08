@@ -7,7 +7,7 @@ import json
 load_dotenv(override=True)
 
 # 获取 API_TOKEN
-API_TOKEN = os.getenv('deepseek_api_key')
+API_TOKEN = os.getenv('OPENAI_API_KEY')
 
 # 初始化 OpenAI 客户端
 client = openai.OpenAI(
