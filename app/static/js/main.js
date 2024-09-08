@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
       local: { chainId: ["1337", "5777"], name: "本地网络" },
       sepolia: { chainId: ["11155111"], name: "Sepolia 测试网络" },
       linea: { chainId: ["59144"], name: "Linea 主网" },
+      Holesky: { chainId: ["17000"], name: "Holesky 测试网络" },
     };
 
     const currentNetwork = "sepolia"; // 切换到本地网络
@@ -78,21 +79,25 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     };
 
-    const sendTransaction = async (userWalletAddress) => {
+    const uploadAuditRecord = async (userWalletAddress, codeHash) => {
       console.log(
-        "sendTransaction called with userWalletAddress:",
+        "uploadAuditRecord called with userWalletAddress:",
         userWalletAddress
       );
       try {
-        if (!web3.utils.isAddress(contractAddress)) {
-          throw new Error("Invalid contract address");
+        // 确保合约实例化正确
+        if (!contract || !contract.methods) {
+          throw new Error("Contract is not initialized correctly");
         }
 
+        const auditFee = await contract.methods.auditFee().call();
+        console.log("Audit fee:", auditFee);
+
         const transactionParameters = {
-          to: contractAddress, // Required except during contract publications.
-          from: userWalletAddress, // must match user's active address.
-          value: web3.utils.toHex(web3.utils.toWei("0.1", "ether")), // 发送 0.1 ETH
-          gas: 6000000, // 增加 Gas 限额
+          to: contractAddress, // 合约地址
+          from: userWalletAddress, // 用户地址
+          value: auditFee, // 审计费用
+          gas: 8000000, // 增加 Gas 限额
         };
 
         console.log(
@@ -100,9 +105,54 @@ document.addEventListener("DOMContentLoaded", () => {
           transactionParameters
         );
 
-        // 发送交易
-        const txHash = await web3.eth.sendTransaction(transactionParameters);
-        console.log("Transaction hash:", txHash);
+        // 调用合约的 uploadAuditRecord 函数
+        const txHash = await contract.methods
+          .uploadAuditRecord(codeHash)
+          .send(transactionParameters)
+          .on("transactionHash", function (hash) {
+            console.log("Transaction hash:", hash);
+          })
+          .on("receipt", function (receipt) {
+            console.log("Transaction receipt:", receipt);
+            // 处理交易收据
+            const events = receipt.events;
+            if (events && events.AuditRecorded) {
+              const { recordId, codeHash, auditor, timestamp } =
+                events.AuditRecorded.returnValues;
+              console.log("AuditRecorded event:", {
+                recordId,
+                codeHash,
+                auditor,
+                timestamp,
+              });
+            }
+          })
+          .on("error", function (error, receipt) {
+            console.error("Error sending transaction:", error);
+            if (receipt) {
+              console.error("Transaction receipt:", receipt);
+            }
+          });
+
+        // 定期检查交易状态
+        const checkTransactionStatus = async (txHash) => {
+          let receipt = null;
+          while (receipt === null) {
+            receipt = await web3.eth.getTransactionReceipt(txHash);
+            if (receipt === null) {
+              console.log("Waiting for transaction to be mined...");
+              await new Promise((resolve) => setTimeout(resolve, 5000)); // 等待 5 秒
+            }
+          }
+          console.log("Transaction mined:", receipt);
+          return receipt.status;
+        };
+
+        const transactionStatus = await checkTransactionStatus(txHash);
+        if (!transactionStatus) {
+          throw new Error("Transaction failed");
+        }
+
         return true;
       } catch (error) {
         console.error("Error sending transaction:", error);
@@ -124,15 +174,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const userWalletAddress = (await web3.eth.getAccounts())[0];
         console.log("User wallet address:", userWalletAddress);
 
-        const transactionSuccess = await sendTransaction(userWalletAddress);
-        if (!transactionSuccess) {
-          alert("Transacation failed");
-          return;
-        }
-
-        // 等待一段时间以确保交易被确认
-        await new Promise((resolve) => setTimeout(resolve, 30000)); // 等待 30 秒
-
         const fileInput = document.getElementById("file-input");
         const file = fileInput.files[0];
         if (!file) {
@@ -143,6 +184,20 @@ document.addEventListener("DOMContentLoaded", () => {
         const reader = new FileReader();
         reader.onload = async function (event) {
           const fileContent = event.target.result;
+          const codeHash = web3.utils.sha3(fileContent);
+
+          const transactionSuccess = await uploadAuditRecord(
+            userWalletAddress,
+            codeHash
+          );
+          if (!transactionSuccess) {
+            alert("Transaction failed");
+            return;
+          }
+
+          // 等待一段时间以确保交易被确认
+          await new Promise((resolve) => setTimeout(resolve, 30000)); // 等待 30 秒
+
           const formData = new FormData();
           formData.append("wallet_address", userWalletAddress);
           formData.append("file", file);
